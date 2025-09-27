@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Voice Control",
+  "version": "1.0",
+  "description": "Voice commands for YouTube using Web Speech API",
+  "permissions": [
+    "activeTab", 
+    "scripting",
+    "storage",
+    "sidePanel",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://*.youtube.com/*"
+  ],
+  "content_scripts": [{
+    "matches": ["https://www.youtube.com/*"],
+    "js": ["content.js"]
+  }],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "YouTube Voice Control"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html",
+    "default_icon": "you.png"
+  },
+  "options_page": "sidepanel.html"
+}
+

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1f2937;
+      color: white;
+      min-height: 100vh;
+    }
+    
+    .search-container {
+      margin-bottom: 20px;
+    }
+    
+    .search-header {
+      margin-bottom: 15px;
+    }
+    
+    .search-header h2 {
+      margin: 0 0 10px 0;
+      font-size: 20px;
+      color: #f3f4f6;
+    }
+    
+    .search-input-container {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    #search-input {
+      flex: 1;
+      padding: 10px 15px;
+      border: 2px solid #374151;
+      border-radius: 8px;
+      background: #111827;
+      color: white;
+      font-size: 14px;
+      outline: none;
+    }
+    
+    #search-input:focus {
+      border-color: #3b82f6;
+    }
+    
+    #search-btn {
+      padding: 10px 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    #search-btn:hover {
+      background: #2563eb;
+    }
+    
+    #search-btn:disabled {
+      background: #6b7280;
+      cursor: not-allowed;
+    }
+    
+    .status-message {
+      padding: 10px 15px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    
+    .status-loading {
+      background: #1f2937;
+      border: 1px solid #374151;
+      color: #9ca3af;
+    }
+    
+    .status-error {
+      background: #1f2937;
+      border: 1px solid #dc2626;
+      color: #f87171;
+    }
+    
+    .status-success {
+      background: #1f2937;
+      border: 1px solid #059669;
+      color: #34d399;
+    }
+    
+    .results-container {
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+    
+    .result-item {
+      background: #374151;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 2px solid transparent;
+    }
+    
+    .result-item:hover {
+      background: #4b5563;
+      transform: translateY(-1px);
+    }
+    
+    .result-header {
+      padding: 12px 15px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #9ca3af;
+      border-bottom: 1px solid #4b5563;
+    }
+    
+    .result-text {
+      padding: 12px 15px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    
+    .highlight {
+      background: #fbbf24;
+      color: #111827;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+    
+    .no-results {
+      text-align: center;
+      color: #9ca3af;
+      padding: 40px 20px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="search-container">
+    <div class="search-header">
+      <h2>🔍 Search YouTube Transcript</h2>
+    </div>
+    
+    <div class="search-input-container">
+      <input type="text" id="search-input" placeholder="Type to search transcript..." />
+      <button id="search-btn">Search</button>
+    </div>
+        
+    <div id="status-message" class="status-message"></div>
+  </div>
+  
+  <div class="results-container">
+    <div id="results-list"></div>
+    <div id="no-results" class="no-results">
+      <p>No results found. Try different keywords.</p>
+    </div>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
