@@ -14,6 +14,8 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 import re
 from functools import lru_cache
+from database import db
+import uuid
 
 app = Flask(__name__)
 CORS(app)  # Allow CORS for extension
@@ -694,6 +696,89 @@ def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'ok'})
 
+@app.route('/feedback', methods=['POST'])
+def save_feedback():
+    """Save user feedback for chunks"""
+    try:
+        data = request.get_json()
+        
+        # Generate session ID if not provided
+        session_id = data.get('session_id', str(uuid.uuid4()))
+        
+        if data.get('type') == 'rating':
+            # Save chunk rating
+            db.save_chunk_rating(
+                query=data['query'],
+                video_id=data['video_id'],
+                chunk_start_time=data['chunk_start_time'],
+                chunk_end_time=data['chunk_end_time'],
+                chunk_text=data['chunk_text'],
+                relevance_score=data.get('relevance_score', 0),
+                user_rating=data['rating'],
+                session_id=session_id
+            )
+            print(f"[FEEDBACK] Saved rating {data['rating']}/5 for chunk at {data['chunk_start_time']}s")
+            
+        elif data.get('type') == 'interaction':
+            # Save interaction
+            db.log_interaction(
+                session_id=session_id,
+                query=data['query'],
+                video_id=data['video_id'],
+                chunk_start_time=data['chunk_start_time'],
+                chunk_end_time=data['chunk_end_time'],
+                chunk_text=data['chunk_text'],
+                relevance_score=data.get('relevance_score', 0),
+                action_type=data['action_type'],  # 'click', 'view', 'skip'
+                time_spent=data.get('time_spent', 0)
+            )
+            print(f"[FEEDBACK] Logged {data['action_type']} interaction for {data['video_id']}")
+        
+        return jsonify({
+            'success': True,
+            'session_id': session_id
+        })
+        
+    except Exception as e:
+        print(f"[FEEDBACK] Error saving feedback: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/stats/<query>', methods=['GET'])
+def get_query_stats(query):
+    """Get statistics for a query"""
+    try:
+        stats = db.get_query_stats(query)
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        print(f"[STATS] Error getting stats: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/popular-queries', methods=['GET'])
+def get_popular_queries():
+    """Get most popular queries"""
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        queries = db.get_popular_queries(limit)
+        return jsonify({
+            'success': True,
+            'queries': queries
+        })
+    except Exception as e:
+        print(f"[STATS] Error getting popular queries: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     print("🎤 YouTube ReflexAgent Server starting...")
     print("📄 Install dependencies: pip install yt-dlp flask flask-cors sentence-transformers")
@@ -704,7 +789,10 @@ if __name__ == '__main__':
     print("   • Batch transcripts: POST /batch-transcripts")
     print("   • Get transcript: GET /transcript/{video_id}")
     print("   • Rank chunks: POST /rank-chunks")
+    print("   • Save feedback: POST /feedback")
+    print("   • Query stats: GET /stats/{query}")
+    print("   • Popular queries: GET /popular-queries")
     print("   • Cached transcripts: GET /cached/{video_id}")
-    print("✨ Embedding-based chunk ranking enabled!")
+    print("✨ Embedding-based chunk ranking + Feedback collection enabled!")
     
     app.run(host='127.0.0.1', port=5000, debug=True)
