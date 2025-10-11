@@ -134,6 +134,70 @@
       font-weight: 600;
     }
     
+    .video-card {
+      background: #1f2937;
+      margin-bottom: 20px;
+      border-radius: 12px;
+      border: 2px solid #3b82f6;
+      overflow: hidden;
+    }
+    
+    .video-header {
+      background: #374151;
+      padding: 15px;
+      border-bottom: 1px solid #4b5563;
+    }
+    
+    .video-info h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      color: #f3f4f6;
+    }
+    
+    .video-info p {
+      margin: 0;
+      font-size: 13px;
+      color: #9ca3af;
+    }
+    
+    .timestamps-container {
+      padding: 10px;
+    }
+    
+    .timestamp-card {
+      background: #374151;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+    
+    .timestamp-card:hover {
+      background: #4b5563;
+      transform: translateY(-1px);
+      border-color: #6b7280;
+    }
+    
+    .timestamp-card:last-child {
+      margin-bottom: 0;
+    }
+    
+    .timestamp-header {
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #9ca3af;
+      border-bottom: 1px solid #4b5563;
+    }
+    
+    .timestamp-text {
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #f3f4f6;
+    }
+    
     .no-results {
       text-align: center;
       color: #9ca3af;
@@ -145,11 +209,11 @@
 <body>
   <div class="search-container">
     <div class="search-header">
-      <h2>🔍 Search YouTube Transcript</h2>
+      <h2>🧠 ReflexAgent Search</h2>
     </div>
     
     <div class="search-input-container">
-      <input type="text" id="search-input" placeholder="Type to search transcript..." />
+      <input type="text" id="search-input" placeholder="Search YouTube videos with AI..." />
       <button id="search-btn">Search</button>
     </div>
         
