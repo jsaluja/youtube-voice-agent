@@ -10,8 +10,10 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   }
 });
 
-// DOM elements
-let searchInput, searchBtn, statusMessage, resultsList, noResults;
+// Global DOM elements
+let searchInput, searchBtn, statusMessage, resultsList, noResults, resultsSummary;
+let totalVideos = 0;
+let totalChunks = 0;
 
 // Listen for messages from background/content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -44,23 +46,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 document.addEventListener('DOMContentLoaded', function() {
   console.log("🔍 Side panel DOM loaded");
   
-  // Get DOM elements
+  // Get DOM elements and assign to global variables
   searchInput = document.getElementById('search-input');
   searchBtn = document.getElementById('search-btn');
-  statusMessage = document.getElementById('status-message');
   resultsList = document.getElementById('results-list');
   noResults = document.getElementById('no-results');
+  statusMessage = document.getElementById('status-message');
+  resultsSummary = document.getElementById('results-summary');
   
   // Add event listeners
-  searchBtn.addEventListener('click', performSearch);
-  searchInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      performSearch();
-    }
-  });
+  if (searchBtn) {
+    searchBtn.addEventListener('click', performSearch);
+    console.log("🔍 Search button event listener added");
+  }
   
-  // Auto-focus search input
-  searchInput.focus();
+  if (searchInput) {
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        performSearch();
+      }
+    });
+    // Auto-focus search input
+    searchInput.focus();
+  }
 });
 
 function showStatus(message, type = 'loading') {
@@ -85,9 +93,14 @@ async function performSearch() {
   showStatus('Searching YouTube videos...', 'loading');
   searchBtn.disabled = true;
   
-  // Clear previous results
+  // Clear previous results and reset counters
   resultsList.innerHTML = '';
   noResults.style.display = 'none';
+  if (resultsSummary) {
+    resultsSummary.classList.remove('show');
+  }
+  totalVideos = 0;
+  totalChunks = 0;
   
   try {
     // Step 1: Search for videos using ReflexAgent
@@ -159,18 +172,22 @@ async function performSearch() {
 function displayReflexResults(chunks, query, video) {
   console.log("🔍 Displaying", chunks.length, "ranked chunks for video:", video.title);
   
+  // Update results summary
+  updateResultsSummary(chunks.length, video.title);
+  
   // Create main video card container
   const videoCard = document.createElement('div');
   videoCard.className = 'video-card';
   
-  // Video header
+  // Video header with collapse toggle
   const videoHeader = document.createElement('div');
   videoHeader.className = 'video-header';
   videoHeader.innerHTML = `
     <div class="video-info">
       <h3>📹 ${video.title}</h3>
-      <p>Channel: ${video.channel}</p>
+      <p>Channel: ${video.channel} • ${chunks.length} relevant moments</p>
     </div>
+    <div class="collapse-toggle expanded">▶</div>
   `;
   videoCard.appendChild(videoHeader);
   
@@ -227,11 +244,43 @@ function displayReflexResults(chunks, query, video) {
     timestampsContainer.appendChild(timestampCard);
   });
   
+  // Add collapse functionality
+  videoHeader.addEventListener('click', () => {
+    const toggle = videoHeader.querySelector('.collapse-toggle');
+    const isExpanded = toggle.classList.contains('expanded');
+    
+    if (isExpanded) {
+      // Collapse
+      toggle.classList.remove('expanded');
+      timestampsContainer.classList.add('collapsed');
+      videoCard.classList.add('collapsed');
+    } else {
+      // Expand
+      toggle.classList.add('expanded');
+      timestampsContainer.classList.remove('collapsed');
+      videoCard.classList.remove('collapsed');
+    }
+  });
+  
   // Add timestamps container to video card
   videoCard.appendChild(timestampsContainer);
   
   // Add the complete video card to results
   resultsList.appendChild(videoCard);
+}
+
+function updateResultsSummary(chunksCount, videoTitle) {
+  if (!resultsSummary) return;
+  
+  // Update global counters
+  totalVideos++;
+  totalChunks += chunksCount;
+  
+  // Show summary
+  resultsSummary.innerHTML = `
+    📊 Found ${totalChunks} relevant moments across ${totalVideos} video${totalVideos > 1 ? 's' : ''}
+  `;
+  resultsSummary.classList.add('show');
 }
 
 function displayResults(results, query) {

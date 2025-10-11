@@ -136,16 +136,34 @@
     
     .video-card {
       background: #1f2937;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
       border-radius: 12px;
       border: 2px solid #3b82f6;
       overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    .video-card.collapsed {
+      border-color: #4b5563;
     }
     
     .video-header {
       background: #374151;
       padding: 15px;
       border-bottom: 1px solid #4b5563;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .video-header:hover {
+      background: #4b5563;
+    }
+    
+    .video-info {
+      flex: 1;
     }
     
     .video-info h3 {
@@ -160,8 +178,27 @@
       color: #9ca3af;
     }
     
+    .collapse-toggle {
+      font-size: 18px;
+      color: #9ca3af;
+      transition: transform 0.3s ease;
+      user-select: none;
+    }
+    
+    .collapse-toggle.expanded {
+      transform: rotate(90deg);
+    }
+    
     .timestamps-container {
       padding: 10px;
+      transition: all 0.3s ease;
+      max-height: 1000px;
+      overflow: hidden;
+    }
+    
+    .timestamps-container.collapsed {
+      max-height: 0;
+      padding: 0 10px;
     }
     
     .timestamp-card {
@@ -198,6 +235,21 @@
       color: #f3f4f6;
     }
     
+    .results-summary {
+      background: #111827;
+      padding: 12px 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      border: 1px solid #374151;
+      font-size: 13px;
+      color: #9ca3af;
+      display: none;
+    }
+    
+    .results-summary.show {
+      display: block;
+    }
+    
     .no-results {
       text-align: center;
       color: #9ca3af;
@@ -221,6 +273,7 @@
   </div>
   
   <div class="results-container">
+    <div id="results-summary" class="results-summary"></div>
     <div id="results-list"></div>
     <div id="no-results" class="no-results">
       <p>No results found. Try different keywords.</p>
