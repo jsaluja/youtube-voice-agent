@@ -1312,17 +1312,12 @@ class YouTubeVoiceControl {
     return match ? match[1] : null;
   }
 
-  async fetchYouTubeTranscript(videoId, useWhisper = false) {
-    console.log(`📄 🚀 Fetching transcript for ${videoId} ${useWhisper ? '(Whisper AI)' : '(Original)'}`);
+  async fetchYouTubeTranscript(videoId) {
+    console.log(`📄 🚀 Fetching transcript for ${videoId} (Original Captions)`);
     
     try {
-      // Construct URL based on preference
-      let serverUrl;
-      if (useWhisper) {
-        serverUrl = `http://localhost:5000/transcript/${videoId}?whisper=true`;
-      } else {
-        serverUrl = `http://localhost:5000/transcript/${videoId}`;
-      }
+      // Use simplified transcript endpoint
+      const serverUrl = `http://127.0.0.1:5000/transcript/${videoId}`;
       
       console.log(`📄 Fetching VTT from: ${serverUrl}`);
       
