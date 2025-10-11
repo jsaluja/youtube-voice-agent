@@ -56,18 +56,27 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Add event listeners
   if (searchBtn) {
-    searchBtn.addEventListener('click', performSearch);
+    searchBtn.addEventListener('click', function() {
+      console.log("🔍 Search button clicked!");
+      performSearch();
+    });
     console.log("🔍 Search button event listener added");
+  } else {
+    console.error("❌ Search button not found!");
   }
   
   if (searchInput) {
     searchInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
+        console.log("🔍 Enter key pressed!");
         performSearch();
       }
     });
     // Auto-focus search input
     searchInput.focus();
+    console.log("🔍 Search input event listener added");
+  } else {
+    console.error("❌ Search input not found!");
   }
 });
 
@@ -82,9 +91,18 @@ function hideStatus() {
 }
 
 async function performSearch() {
+  console.log("🔍 performSearch() function called");
+  
+  if (!searchInput) {
+    console.error("❌ searchInput is null in performSearch");
+    return;
+  }
+  
   const query = searchInput.value.trim();
+  console.log("🔍 Query value:", query);
   
   if (!query) {
+    console.log("🔍 Empty query, showing error");
     showStatus('Please enter a search term', 'error');
     return;
   }
@@ -220,35 +238,51 @@ function displayReflexResults(chunks, query, video) {
       }
     });
     
-    // Show relevance score
-    const relevanceScore = (chunk.relevance_score * 100).toFixed(1);
-    
-    // Truncate text for better UI (max 150 characters)
-    let displayText = highlightedText;
-    if (displayText.length > 150) {
-      displayText = displayText.substring(0, 150) + '...';
-    }
+    const relevancePercent = (chunk.relevance_score * 100).toFixed(1);
+    const cardId = `chunk-${video.video_id}-${chunk.start_time}`;
     
     timestampCard.innerHTML = `
       <div class="timestamp-header">
-        ⏯️ ${timeStr} | 🎯 ${relevanceScore}% relevant
+        ⏯️ ${timeStr} | 🎯 ${relevancePercent}% relevant
       </div>
-      <div class="timestamp-text">${displayText}</div>
+      <div class="timestamp-text">
+        ${highlightedText}
+      </div>
+      <div class="rating-container">
+        <span class="rating-label">Rate relevance:</span>
+        <div class="star-rating" data-chunk-id="${cardId}">
+          <span class="star" data-rating="1">★</span>
+          <span class="star" data-rating="2">★</span>
+          <span class="star" data-rating="3">★</span>
+          <span class="star" data-rating="4">★</span>
+          <span class="star" data-rating="5">★</span>
+        </div>
+        <span class="rating-feedback">Thanks!</span>
+      </div>
     `;
-    
-    // Add click handler
-    timestampCard.addEventListener('click', () => {
-      jumpToTimestamp(chunk.start_time, video.video_id);
+
+    // Add click handler for timestamp (not rating area)
+    const timestampHeader = timestampCard.querySelector('.timestamp-header');
+    const timestampText = timestampCard.querySelector('.timestamp-text');
+
+    [timestampHeader, timestampText].forEach(element => {
+      element.addEventListener('click', () => {
+        jumpToTimestamp(chunk.start_time, video.video_id);
+        logInteraction(query, video.video_id, chunk, 'click');
+      });
     });
-    
+
+    // Add star rating functionality
+    setupStarRating(timestampCard, query, video, chunk);
+
     timestampsContainer.appendChild(timestampCard);
   });
-  
+
   // Add collapse functionality
   videoHeader.addEventListener('click', () => {
     const toggle = videoHeader.querySelector('.collapse-toggle');
     const isExpanded = toggle.classList.contains('expanded');
-    
+
     if (isExpanded) {
       // Collapse
       toggle.classList.remove('expanded');
@@ -261,10 +295,10 @@ function displayReflexResults(chunks, query, video) {
       videoCard.classList.remove('collapsed');
     }
   });
-  
+
   // Add timestamps container to video card
   videoCard.appendChild(timestampsContainer);
-  
+
   // Add the complete video card to results
   resultsList.appendChild(videoCard);
 }
@@ -378,4 +412,125 @@ function jumpToTimestamp(timestamp, videoId = null) {
 
 function escapeRegex(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Session management
+let sessionId = null;
+
+function getSessionId() {
+  if (!sessionId) {
+    sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  }
+  return sessionId;
+}
+
+function setupStarRating(timestampCard, query, video, chunk) {
+  const starRating = timestampCard.querySelector('.star-rating');
+  const stars = starRating.querySelectorAll('.star');
+  const feedback = timestampCard.querySelector('.rating-feedback');
+  
+  let currentRating = 0;
+  
+  stars.forEach((star, index) => {
+    const rating = index + 1;
+    
+    // Hover effects
+    star.addEventListener('mouseenter', () => {
+      highlightStars(stars, rating);
+    });
+    
+    star.addEventListener('mouseleave', () => {
+      highlightStars(stars, currentRating);
+    });
+    
+    // Click to rate
+    star.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent timestamp jump
+      currentRating = rating;
+      highlightStars(stars, rating);
+      
+      // Show feedback
+      feedback.classList.add('show');
+      setTimeout(() => {
+        feedback.classList.remove('show');
+      }, 2000);
+      
+      // Send rating to server
+      sendRating(query, video, chunk, rating);
+    });
+  });
+}
+
+function highlightStars(stars, rating) {
+  stars.forEach((star, index) => {
+    star.classList.remove('active', 'hover');
+    if (index < rating) {
+      star.classList.add('active');
+    }
+  });
+}
+
+function sendRating(query, video, chunk, rating) {
+  const ratingData = {
+    type: 'rating',
+    session_id: getSessionId(),
+    query: query,
+    video_id: video.video_id,
+    chunk_start_time: chunk.start_time,
+    chunk_end_time: chunk.end_time,
+    chunk_text: chunk.text,
+    relevance_score: chunk.relevance_score,
+    rating: rating
+  };
+  
+  fetch('http://127.0.0.1:5000/feedback', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(ratingData)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log(`✅ Rating ${rating}/5 saved for chunk at ${chunk.start_time}s`);
+    } else {
+      console.error('❌ Failed to save rating:', data.error);
+    }
+  })
+  .catch(error => {
+    console.error('❌ Error sending rating:', error);
+  });
+}
+
+function logInteraction(query, videoId, chunk, actionType, timeSpent = 0) {
+  const interactionData = {
+    type: 'interaction',
+    session_id: getSessionId(),
+    query: query,
+    video_id: videoId,
+    chunk_start_time: chunk.start_time,
+    chunk_end_time: chunk.end_time,
+    chunk_text: chunk.text,
+    relevance_score: chunk.relevance_score,
+    action_type: actionType,
+    time_spent: timeSpent
+  };
+  
+  fetch('http://127.0.0.1:5000/feedback', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(interactionData)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log(`✅ ${actionType} interaction logged for ${videoId}`);
+    }
+  })
+  .catch(error => {
+    console.error('❌ Error logging interaction:', error);
+  });
 }

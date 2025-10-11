@@ -235,6 +235,54 @@
       color: #f3f4f6;
     }
     
+    .rating-container {
+      padding: 8px 12px;
+      border-top: 1px solid #4b5563;
+      background: #2d3748;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .rating-label {
+      font-size: 11px;
+      color: #9ca3af;
+      font-weight: 500;
+    }
+    
+    .star-rating {
+      display: flex;
+      gap: 2px;
+    }
+    
+    .star {
+      font-size: 14px;
+      color: #4b5563;
+      cursor: pointer;
+      transition: color 0.2s ease;
+      user-select: none;
+    }
+    
+    .star:hover,
+    .star.hover {
+      color: #fbbf24;
+    }
+    
+    .star.active {
+      color: #f59e0b;
+    }
+    
+    .rating-feedback {
+      font-size: 10px;
+      color: #10b981;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .rating-feedback.show {
+      opacity: 1;
+    }
+    
     .results-summary {
       background: #111827;
       padding: 12px 15px;
