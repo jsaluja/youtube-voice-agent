@@ -25,7 +25,7 @@ class SelfLearningPipeline:
         self.base_model_name = "all-MiniLM-L6-v2"
         self.current_model_version = 1
         self.min_training_samples = 5   # Minimum samples before retraining (demo-friendly)
-        self.learning_threshold = 0.01  # Minimum improvement to deploy new model (demo-friendly)
+        self.learning_threshold = 0.001  # Minimum improvement to deploy new model (demo-friendly)
         
         # Create models directory
         os.makedirs(model_path, exist_ok=True)
@@ -84,15 +84,15 @@ class SelfLearningPipeline:
                 # Convert 1-5 rating to similarity score (0-1)
                 similarity_score = (rating - 1) / 4.0
                 
-                # Create positive examples (rating >= 4)
-                if rating >= 4:
-                    examples.append(InputExample(
-                        texts=[query, chunk_text], 
-                        label=similarity_score
-                    ))
+                # Include ALL ratings for more training data
+                examples.append(InputExample(
+                    texts=[query, chunk_text], 
+                    label=similarity_score
+                ))
                 
-                # Create negative examples (rating <= 2) 
-                elif rating <= 2:
+                # Optional: Add more weight to extreme examples
+                if rating >= 4 or rating <= 2:
+                    # Add duplicate for stronger signal on clear preferences
                     examples.append(InputExample(
                         texts=[query, chunk_text], 
                         label=similarity_score
@@ -168,9 +168,20 @@ class SelfLearningPipeline:
             
             # Final evaluation
             try:
-                eval_score = evaluator(model_copy)
-                if isinstance(eval_score, dict):
-                    eval_score = eval_score.get('eval_cosine_accuracy', 0.0)
+                eval_result = evaluator(model_copy)
+                print(f"🔍 Raw evaluation result: {eval_result}")
+                
+                # Handle different return types
+                if isinstance(eval_result, dict):
+                    # Try different possible keys
+                    eval_score = (eval_result.get('eval_cosine_accuracy') or 
+                                eval_result.get('cosine_accuracy') or 
+                                eval_result.get('accuracy') or 
+                                eval_result.get('eval_spearman_cosine') or
+                                list(eval_result.values())[0] if eval_result else 0.0)
+                else:
+                    eval_score = float(eval_result) if eval_result is not None else 0.0
+                    
                 print(f"📈 Fine-tuning completed. Evaluation score: {eval_score:.4f}")
             except Exception as e:
                 print(f"❌ Final evaluation error: {e}")
