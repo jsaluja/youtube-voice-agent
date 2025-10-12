@@ -1,3 +1,10 @@
 /transcripts
 *test*
 *__pycache__*
+
+wandb/*
+
+*.db
+
+bandit_state.json
+wandb_run_id.txt

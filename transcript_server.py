@@ -16,6 +16,18 @@ import re
 from functools import lru_cache
 from database import db
 import uuid
+from bandit import bandit
+from datetime import datetime
+from wandb_logger import logger as wandb_logger
+import time
+
+# W&B Configuration (set your API key here for demo)
+# Get your API key from: https://wandb.ai/settings
+WANDB_API_KEY = os.getenv('WANDB_API_KEY')  # Set via environment variable
+# WANDB_API_KEY = "your-api-key-here"  # Or uncomment and set directly
+
+if WANDB_API_KEY:
+    os.environ['WANDB_API_KEY'] = WANDB_API_KEY
 
 app = Flask(__name__)
 CORS(app)  # Allow CORS for extension
@@ -542,11 +554,20 @@ def search_youtube_videos(query, max_results=5):
 @app.route('/search/<query>')
 def search_videos(query):
     """Search YouTube videos by query"""
+    start_time = time.time()
+    
     try:
         max_results = request.args.get('max_results', 5, type=int)
         max_results = min(max_results, 10)  # Limit to 10 videos max
         
         videos = search_youtube_videos(query, max_results)
+        
+        # Log search to W&B
+        wandb_logger.log_search_query(
+            query=query,
+            video_count=len(videos),
+            chunk_count=0  # Will be updated when chunks are generated
+        )
         
         if not videos:
             return jsonify({
@@ -554,6 +575,10 @@ def search_videos(query):
                 'error': 'No videos found',
                 'query': query
             }), 404
+        
+        # Log system performance
+        response_time = time.time() - start_time
+        wandb_logger.log_system_metrics(response_time=response_time)
         
         return jsonify({
             'success': True,
@@ -563,6 +588,9 @@ def search_videos(query):
         })
         
     except Exception as e:
+        response_time = time.time() - start_time
+        wandb_logger.log_system_metrics(response_time=response_time)
+        
         return jsonify({
             'success': False,
             'error': str(e),
@@ -670,11 +698,30 @@ def rank_chunks():
                 'error': 'Could not create chunks from transcript'
             }), 500
         
-        # Rank chunks by relevance
-        ranked_chunks = rank_chunks_by_relevance(query, chunks)
+        # First get embedding-based ranking
+        embedding_ranked_chunks = rank_chunks_by_relevance(query, chunks)
         
-        # Return top chunks (limit to 10 for performance)
-        top_chunks = ranked_chunks[:10]
+        # Then apply bandit selection for final ranking
+        bandit_ranked_chunks = bandit.select_chunks(embedding_ranked_chunks, query, top_k=10)
+        
+        print(f"[BANDIT] Applied bandit ranking to {len(embedding_ranked_chunks)} chunks")
+        
+        # Log chunk selection to W&B
+        exploration_count = sum(1 for chunk in bandit_ranked_chunks if chunk.get('selection_type') == 'explore')
+        exploitation_count = len(bandit_ranked_chunks) - exploration_count
+        
+        wandb_logger.log_chunk_selection(
+            chunks_selected=len(bandit_ranked_chunks),
+            exploration_count=exploration_count,
+            exploitation_count=exploitation_count
+        )
+        
+        # Log bandit metrics
+        bandit_stats = bandit.get_performance_stats()
+        wandb_logger.log_bandit_metrics(bandit_stats)
+        
+        # Return top chunks
+        top_chunks = bandit_ranked_chunks
         
         return jsonify({
             'success': True,
@@ -706,7 +753,7 @@ def save_feedback():
         session_id = data.get('session_id', str(uuid.uuid4()))
         
         if data.get('type') == 'rating':
-            # Save chunk rating
+            # Save chunk rating to database
             db.save_chunk_rating(
                 query=data['query'],
                 video_id=data['video_id'],
@@ -717,7 +764,41 @@ def save_feedback():
                 user_rating=data['rating'],
                 session_id=session_id
             )
+            
+            # Update bandit with the rating
+            chunk_data = {
+                'video_id': data['video_id'],
+                'start_time': data['chunk_start_time'],
+                'end_time': data['chunk_end_time'],
+                'text': data['chunk_text'],
+                'relevance_score': data.get('relevance_score', 0)
+            }
+            
+            bandit.update_reward(
+                chunk=chunk_data,
+                query=data['query'],
+                rating=data['rating'],
+                relevance_score=data.get('relevance_score', 0)
+            )
+            
+            # Save bandit state after each update
+            bandit.save_state()
+            
+            # Log rating to W&B
+            wandb_logger.log_user_rating(
+                query=data['query'],
+                chunk_id=f"{data['video_id']}_{data['chunk_start_time']}",
+                rating=data['rating'],
+                relevance_score=data.get('relevance_score', 0),
+                bandit_score=chunk_data.get('bandit_score')
+            )
+            
+            # Log updated bandit metrics
+            bandit_stats = bandit.get_performance_stats()
+            wandb_logger.log_bandit_metrics(bandit_stats)
+            
             print(f"[FEEDBACK] Saved rating {data['rating']}/5 for chunk at {data['chunk_start_time']}s")
+            print(f"[BANDIT] Updated bandit with rating, total interactions: {bandit.total_interactions}")
             
         elif data.get('type') == 'interaction':
             # Save interaction
@@ -779,6 +860,24 @@ def get_popular_queries():
             'error': str(e)
         }), 500
 
+@app.route('/bandit-stats', methods=['GET'])
+def get_bandit_stats():
+    """Get current bandit performance statistics"""
+    try:
+        stats = bandit.get_performance_stats()
+        return jsonify({
+            'success': True,
+            'bandit_stats': stats,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        print(f"[BANDIT] Error getting bandit stats: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 if __name__ == '__main__':
     print("🎤 YouTube ReflexAgent Server starting...")
     print("📄 Install dependencies: pip install yt-dlp flask flask-cors sentence-transformers")
@@ -792,7 +891,10 @@ if __name__ == '__main__':
     print("   • Save feedback: POST /feedback")
     print("   • Query stats: GET /stats/{query}")
     print("   • Popular queries: GET /popular-queries")
+    print("   • Bandit stats: GET /bandit-stats")
     print("   • Cached transcripts: GET /cached/{video_id}")
-    print("✨ Embedding-based chunk ranking + Feedback collection enabled!")
+    print("🎲 Reinforcement Learning: Epsilon-greedy bandit for chunk selection!")
+    print("📊 W&B Integration: Continuous learning dashboard with persistent runs!")
+    print("✨ System learns from user ratings to improve search results!")
     
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    app.run(host='127.0.0.1', port=5000, debug=False)
