@@ -263,6 +263,66 @@ class WandBLogger:
         mean = sum(values) / len(values)
         return sum((x - mean) ** 2 for x in values) / len(values)
     
+    def log_model_update(self, version, model_path):
+        """Log model update to W&B"""
+        if not self.is_initialized or not self.run:
+            return
+        
+        try:
+            self.run.log({
+                "model/version": version,
+                "model/update_timestamp": datetime.now().timestamp(),
+                "model/path": model_path
+            })
+        except Exception as e:
+            print(f"❌ W&B model update logging failed: {e}")
+    
+    def log_fine_tuning_start(self, training_samples, eval_samples):
+        """Log fine-tuning start"""
+        if not self.is_initialized or not self.run:
+            return
+        
+        try:
+            self.run.log({
+                "fine_tuning/start_timestamp": datetime.now().timestamp(),
+                "fine_tuning/training_samples": training_samples,
+                "fine_tuning/eval_samples": eval_samples,
+                "fine_tuning/status": "started"
+            })
+        except Exception as e:
+            print(f"❌ W&B fine-tuning start logging failed: {e}")
+    
+    def log_fine_tuning_progress(self, epoch, loss, eval_score):
+        """Log fine-tuning progress"""
+        if not self.is_initialized or not self.run:
+            return
+        
+        try:
+            self.run.log({
+                "fine_tuning/epoch": epoch,
+                "fine_tuning/training_loss": loss,
+                "fine_tuning/eval_score": eval_score,
+                "fine_tuning/progress_timestamp": datetime.now().timestamp()
+            })
+        except Exception as e:
+            print(f"❌ W&B fine-tuning progress logging failed: {e}")
+    
+    def log_fine_tuning_complete(self, final_eval_score, deployed, improvement):
+        """Log fine-tuning completion"""
+        if not self.is_initialized or not self.run:
+            return
+        
+        try:
+            self.run.log({
+                "fine_tuning/final_eval_score": final_eval_score,
+                "fine_tuning/deployed": deployed,
+                "fine_tuning/improvement": improvement,
+                "fine_tuning/completion_timestamp": datetime.now().timestamp(),
+                "fine_tuning/status": "completed"
+            })
+        except Exception as e:
+            print(f"❌ W&B fine-tuning completion logging failed: {e}")
+    
     def finish(self):
         """Finish W&B run"""
         if self.is_initialized and self.run:

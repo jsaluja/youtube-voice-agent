@@ -7,13 +7,12 @@ Uses yt-dlp for YouTube captions and video search
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import yt_dlp
-from urllib.parse import urlparse, parse_qs
 import os
-import json
-from sentence_transformers import SentenceTransformer
-import numpy as np
 import re
 from functools import lru_cache
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from self_learning import initialize_self_learning, get_embeddings as get_self_learning_embeddings
 from database import db
 import uuid
 from bandit import bandit
@@ -32,10 +31,11 @@ if WANDB_API_KEY:
 app = Flask(__name__)
 CORS(app)  # Allow CORS for extension
 
-# Initialize embedding model
-print("🧠 Loading embedding model...")
-embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-print("✅ Embedding model loaded!")
+# Initialize self-learning pipeline
+print("🧠 Initializing self-learning embedding model...")
+self_learning_pipeline = initialize_self_learning()
+print("✅ Self-learning model initialized!")
+
 
 def extract_video_id(url):
     """Extract video ID from YouTube URL"""
@@ -452,9 +452,9 @@ def time_to_seconds(time_str):
     return round(h * 3600 + m * 60 + s, 2)
 
 def embed_text(text):
-    """Generate embedding for text using the loaded model"""
+    """Generate embedding for text using the self-learning model"""
     try:
-        embedding = embedding_model.encode(text)
+        embedding = get_self_learning_embeddings([text])[0]
         return embedding
     except Exception as e:
         print(f"[EMBED] Error generating embedding: {e}")
@@ -489,7 +489,7 @@ def rank_chunks_by_relevance(query, chunks):
         
         # Generate embeddings for all chunks
         chunk_texts = [chunk['text'] for chunk in chunks]
-        chunk_embeddings = embedding_model.encode(chunk_texts)
+        chunk_embeddings = get_self_learning_embeddings(chunk_texts)
         
         # Calculate similarities
         similarities = calculate_similarity(query_embedding, chunk_embeddings)
@@ -860,9 +860,9 @@ def get_popular_queries():
             'error': str(e)
         }), 500
 
-@app.route('/bandit-stats', methods=['GET'])
+@app.route('/bandit-stats')
 def get_bandit_stats():
-    """Get current bandit performance statistics"""
+    """Get bandit performance statistics"""
     try:
         stats = bandit.get_performance_stats()
         return jsonify({
@@ -872,6 +872,53 @@ def get_bandit_stats():
         })
     except Exception as e:
         print(f"[BANDIT] Error getting bandit stats: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/model-info')
+def get_model_info():
+    """Get current model information"""
+    try:
+        model_info = self_learning_pipeline.get_model_info()
+        return jsonify({
+            'success': True,
+            'model_info': model_info,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        print(f"[MODEL] Error getting model info: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/trigger-learning', methods=['POST'])
+def trigger_learning():
+    """Manually trigger a learning cycle"""
+    try:
+        print("[LEARNING] Manual learning trigger requested")
+        
+        # Trigger learning directly on the pipeline instance
+        def run_learning():
+            try:
+                self_learning_pipeline.learning_cycle()
+            except Exception as e:
+                print(f"[LEARNING] Error in learning cycle: {e}")
+        
+        # Start learning in background thread
+        import threading
+        learning_thread = threading.Thread(target=run_learning)
+        learning_thread.start()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Learning cycle triggered in background',
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        print(f"[LEARNING] Error triggering learning: {e}")
         return jsonify({
             'success': False,
             'error': str(e)

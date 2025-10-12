@@ -163,7 +163,13 @@ async function performSearch() {
           if (rankData.success && rankData.chunks && rankData.chunks.length > 0) {
             displayReflexResults(rankData.chunks, query, video);
             hasResults = true;
+          } else {
+            console.error(`No chunks found for video ${video.video_id}:`, rankData);
           }
+        } else {
+          console.error(`Rank request failed for video ${video.video_id}:`, rankResponse.status);
+          const errorData = await rankResponse.text();
+          console.error('Error details:', errorData);
         }
       } catch (error) {
         console.error(`Error processing video ${video.video_id}:`, error);
