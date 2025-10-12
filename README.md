@@ -2,12 +2,24 @@
 
 An intelligent YouTube search and transcript analysis system that learns from user feedback to improve search relevance over time using reinforcement learning techniques.
 
-## 🏆 Awards
+## 🏆 Awards & Submissions
 
 **🥈 Second Prize Winner** - [Hack the Next Voice Agent](https://luma.com/xcx9dvik?tk=lstfX5)  
 *LiquidMetal AI and SambaNova*  
 Saturday, September 27, 2025 | Palo Alto, CA  
 [Demo Video](https://www.youtube.com/watch?v=tahjpBs36Z4)
+
+**📝 Submitted to** - [WeaveHacks 2: Self-Improving Agents Hackathon](https://luma.com/weavehacks2?tk=89Mqgq)  
+*Weights & Biases and Google Cloud*  
+Saturday, October 11, 2025
+
+**Improvements for WeaveHacks 2:**
+- Enhanced RL algorithms with multi-armed bandit optimization for better chunk selection
+- Advanced embedding fine-tuning pipeline that adapts to user preferences over time
+- Personalized learning system that creates individual user preference profiles
+- Comprehensive Weights & Biases integration for real-time monitoring and experiment tracking
+- LLM judge system for automated quality assessment and learning trigger decisions
+- Self-improving architecture that continuously evolves based on user feedback patterns
 
 ## 🚀 Features
 
