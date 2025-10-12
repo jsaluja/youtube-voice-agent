@@ -2,6 +2,13 @@
 
 An intelligent YouTube search and transcript analysis system that learns from user feedback to improve search relevance over time using reinforcement learning techniques.
 
+## 🏆 Awards
+
+**🥈 Second Prize Winner** - [Hack the Next Voice Agent](https://luma.com/xcx9dvik?tk=lstfX5)  
+*LiquidMetal AI and SambaNova*  
+Saturday, September 27, 2025 | Palo Alto, CA  
+[Demo Video](https://www.youtube.com/watch?v=tahjpBs36Z4)
+
 ## 🚀 Features
 
 - **Voice-Activated Search**: Chrome extension with voice commands for YouTube video search
