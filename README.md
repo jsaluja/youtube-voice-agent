@@ -14,12 +14,12 @@ Saturday, September 27, 2025 | Palo Alto, CA
 Saturday, October 11, 2025
 
 **Improvements for WeaveHacks 2:**
-- Enhanced RL algorithms with multi-armed bandit optimization for better chunk selection
-- Advanced embedding fine-tuning pipeline that adapts to user preferences over time
-- Personalized learning system that creates individual user preference profiles
+- Multi-video search capability that performs semantic search across YouTube's search results to surface most relevant segments
+- Personalized experience using RL algorithms with multi-armed bandit that evolves over time with user feedback
+- LLM judge for online quality evaluation and to make decisions for model fine tuning
+- Intelligent evaluation and controlled deployment of fine tuned models
 - Comprehensive Weights & Biases integration for real-time monitoring and experiment tracking
-- LLM judge system for automated quality assessment and learning trigger decisions
-- Self-improving architecture that continuously evolves based on user feedback patterns
+- Self-improving architecture that continuously evolves based on usage
 
 ## 🚀 Features
 
