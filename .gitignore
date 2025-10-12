@@ -9,3 +9,4 @@ models/*
 
 bandit_state.json
 wandb_run_id.txt
+wandb_step_counter.txt

@@ -14,22 +14,64 @@ class WandBLogger:
         self.entity = entity
         self.run = None
         self.is_initialized = False
+        self.step_counter = 0  # Track steps for time series
         
         # Initialize W&B
         self.initialize()
     
     def initialize(self):
-        """Initialize W&B run - simple and non-blocking"""
+        """Initialize W&B run with persistence"""
         try:
-            # Quick W&B setup - don't block server startup
             import wandb
             
-            # Simple initialization without complex settings
+            # Try to load existing run ID and step counter
+            run_id_file = "wandb_run_id.txt"
+            step_file = "wandb_step_counter.txt"
+            run_id = None
+            
+            if os.path.exists(run_id_file):
+                try:
+                    with open(run_id_file, 'r') as f:
+                        run_id = f.read().strip()
+                    print(f"📋 Resuming W&B run: {run_id}")
+                except:
+                    pass
+            
+            # Load last step counter
+            if os.path.exists(step_file):
+                try:
+                    with open(step_file, 'r') as f:
+                        step_content = f.read().strip()
+                        self.step_counter = int(step_content)
+                    print(f"📊 Resuming from step: {self.step_counter} (loaded from file: '{step_content}')")
+                except Exception as e:
+                    print(f"⚠️  Error loading step counter: {e}")
+                    self.step_counter = 0
+            else:
+                print("📊 No step counter file found, starting from 0")
+            
+            # Initialize with persistent run ID
             self.run = wandb.init(
                 project=self.project_name,
-                name="ReflexAgent Session",
+                name="YouTube-Agent-Continuous",
+                id=run_id,
+                resume="allow",  # Resume if run exists, create new if not
                 mode="online"
             )
+            
+            # Safety check: ensure step counter is higher than W&B's last step
+            if self.run and hasattr(self.run, 'step') and self.run.step:
+                if self.step_counter <= self.run.step:
+                    self.step_counter = self.run.step + 1
+                    print(f"🔧 Adjusted step counter to {self.step_counter} (W&B last step: {self.run.step})")
+            
+            # Save run ID and step counter for future sessions
+            if self.run:
+                with open(run_id_file, 'w') as f:
+                    f.write(self.run.id)
+                with open(step_file, 'w') as f:
+                    f.write(str(self.step_counter))
+                print(f"💾 Saved W&B run ID: {self.run.id}, step: {self.step_counter}")
             
             self.is_initialized = True
             print("✅ W&B initialized successfully")
@@ -40,6 +82,13 @@ class WandBLogger:
             self.is_initialized = False
             self.run = None
     
+    def _save_step_counter(self):
+        """Save current step counter to file"""
+        try:
+            with open("wandb_step_counter.txt", 'w') as f:
+                f.write(str(self.step_counter))
+        except:
+            pass  # Fail silently to not break logging
     
     
     def log_search_query(self, query, video_count, chunk_count):
@@ -56,7 +105,9 @@ class WandBLogger:
                 "search/timestamp": datetime.now().timestamp(),
                 "search/query": query
             }
-            self.run.log(log_data)
+            self.step_counter += 1
+            self.run.log(log_data, step=self.step_counter)
+            self._save_step_counter()
             
         except Exception as e:
             print(f"❌ W&B search logging failed: {e}")
@@ -84,7 +135,9 @@ class WandBLogger:
                 log_data["feedback/bandit_score"] = bandit_score
             
             # Single log call to prevent race conditions
-            self.run.log(log_data)
+            self.step_counter += 1
+            self.run.log(log_data, step=self.step_counter)
+            self._save_step_counter()
             
         except Exception as e:
             print(f"❌ W&B rating logging failed: {e}")
@@ -114,7 +167,9 @@ class WandBLogger:
                     log_data[f"bandit/top_chunk_{i+1}_count"] = count
             
             # Single log call for all bandit metrics
-            self.run.log(log_data)
+            self.step_counter += 1
+            self.run.log(log_data, step=self.step_counter)
+            self._save_step_counter()
             print(f"✅ Logged bandit metrics to W&B: {bandit_stats.get('total_interactions', 0)} interactions, ε={bandit_stats.get('current_epsilon', 0):.3f}")
             
         except Exception as e:
