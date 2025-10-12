@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Self-Learning Pipeline for ReflexAgent
+Self-Learning Pipeline for YoutubeAgent
 Automatically improves the embedding model based on user feedback
 """
 

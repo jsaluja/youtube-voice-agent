@@ -5,7 +5,7 @@ import json
 
 class WandBLogger:
     """
-    Weights & Biases logger for ReflexAgent RL monitoring
+    Weights & Biases logger for YoutubeAgent RL monitoring
     Tracks user interactions, bandit performance, and learning metrics
     """
     

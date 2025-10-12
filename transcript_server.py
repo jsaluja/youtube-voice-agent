@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-YouTube ReflexAgent Server
+YouTube YoutubeAgent Server
 Uses yt-dlp for YouTube captions and video search
 """
 
@@ -992,7 +992,7 @@ def get_judge_stats():
 
 
 if __name__ == '__main__':
-    print("🎤 YouTube ReflexAgent Server starting...")
+    print("🎤 YouTube YoutubeAgent Server starting...")
     print("📄 Install dependencies: pip install yt-dlp flask flask-cors sentence-transformers")
     print("🧠 Features: Video search + Original captions + Chunk ranking")
     print("🌐 Server will run on http://127.0.0.1:5000")

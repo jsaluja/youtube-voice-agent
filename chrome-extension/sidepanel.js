@@ -107,7 +107,7 @@ async function performSearch() {
     return;
   }
   
-  console.log("🔍 ReflexAgent searching for:", query);
+  console.log("🔍 YoutubeAgent searching for:", query);
   showStatus('Searching YouTube videos...', 'loading');
   searchBtn.disabled = true;
   
@@ -121,7 +121,7 @@ async function performSearch() {
   totalChunks = 0;
   
   try {
-    // Step 1: Search for videos using ReflexAgent
+    // Step 1: Search for videos using YoutubeAgent
     const searchResponse = await fetch(`http://127.0.0.1:5000/search/${encodeURIComponent(query)}`);
     
     if (!searchResponse.ok) {
@@ -185,7 +185,7 @@ async function performSearch() {
     }
     
   } catch (error) {
-    console.error("ReflexAgent search error:", error);
+    console.error("YoutubeAgent search error:", error);
     showStatus(`Search failed: ${error.message}`, 'error');
     noResults.style.display = 'block';
   } finally {
