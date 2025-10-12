@@ -13,6 +13,7 @@ from functools import lru_cache
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from self_learning import initialize_self_learning, get_embeddings as get_self_learning_embeddings
+from llm_judge import initialize_llm_judge, evaluate_search_results
 from database import db
 import uuid
 from bandit import bandit
@@ -35,6 +36,11 @@ CORS(app)  # Allow CORS for extension
 print("🧠 Initializing self-learning embedding model...")
 self_learning_pipeline = initialize_self_learning()
 print("✅ Self-learning model initialized!")
+
+# Initialize LLM judge
+print("🤖 Initializing LLM judge...")
+llm_judge = initialize_llm_judge()
+print("✅ LLM judge initialized!")
 
 
 def extract_video_id(url):
@@ -723,13 +729,56 @@ def rank_chunks():
         # Return top chunks
         top_chunks = bandit_ranked_chunks
         
+        # Evaluate search quality with LLM judge
+        try:
+            judge_evaluation = evaluate_search_results(query, top_chunks)
+            
+            # Log evaluation to W&B
+            wandb_logger.log_judge_evaluation(
+                query=query,
+                video_id=video_id,
+                judge_scores=judge_evaluation['scores'],
+                average_score=judge_evaluation['average_score'],
+                quality_level=judge_evaluation['quality_level'],
+                trigger_decision=judge_evaluation['trigger_fine_tuning'],
+                evaluation_time=judge_evaluation['evaluation_time']
+            )
+            
+            # Check if fine-tuning should be triggered
+            if judge_evaluation['trigger_fine_tuning'] == 'immediate':
+                print(f"🚨 LLM Judge triggered immediate fine-tuning (score: {judge_evaluation['average_score']:.2f})")
+                # Trigger fine-tuning in background
+                import threading
+                def trigger_learning():
+                    try:
+                        self_learning_pipeline.learning_cycle()
+                    except Exception as e:
+                        print(f"❌ Fine-tuning trigger failed: {e}")
+                
+                learning_thread = threading.Thread(target=trigger_learning)
+                learning_thread.start()
+                
+            elif judge_evaluation['trigger_fine_tuning'] == 'scheduled':
+                print(f"⚠️  LLM Judge detected declining quality (score: {judge_evaluation['average_score']:.2f})")
+            
+            print(f"🤖 LLM Judge: {judge_evaluation['average_score']:.2f}/5.0 ({judge_evaluation['quality_level']})")
+            
+        except Exception as e:
+            print(f"⚠️  LLM Judge evaluation failed: {e}")
+            judge_evaluation = {'average_score': 0.0, 'quality_level': 'error'}
+        
         return jsonify({
             'success': True,
             'query': query,
             'video_id': video_id,
             'total_chunks': len(chunks),
             'returned_chunks': len(top_chunks),
-            'chunks': top_chunks
+            'chunks': top_chunks,
+            'judge_evaluation': {
+                'average_score': judge_evaluation.get('average_score', 0.0),
+                'quality_level': judge_evaluation.get('quality_level', 'unknown'),
+                'trigger_decision': judge_evaluation.get('trigger_fine_tuning', 'none')
+            }
         })
         
     except Exception as e:
@@ -919,6 +968,23 @@ def trigger_learning():
         })
     except Exception as e:
         print(f"[LEARNING] Error triggering learning: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/judge-stats')
+def get_judge_stats():
+    """Get LLM judge performance statistics"""
+    try:
+        stats = llm_judge.get_quality_stats()
+        return jsonify({
+            'success': True,
+            'judge_stats': stats,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        print(f"[JUDGE] Error getting judge stats: {e}")
         return jsonify({
             'success': False,
             'error': str(e)

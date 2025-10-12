@@ -323,6 +323,31 @@ class WandBLogger:
         except Exception as e:
             print(f"❌ W&B fine-tuning completion logging failed: {e}")
     
+    def log_judge_evaluation(self, query, video_id, judge_scores, average_score, quality_level, trigger_decision, evaluation_time):
+        """Log LLM judge evaluation results"""
+        if not self.is_initialized or not self.run:
+            return
+        
+        try:
+            self.run.log({
+                "judge/average_score": average_score,
+                "judge/quality_level": quality_level,
+                "judge/trigger_decision": trigger_decision,
+                "judge/evaluation_time": evaluation_time,
+                "judge/num_results": len(judge_scores),
+                "judge/min_score": min(judge_scores) if judge_scores else 0,
+                "judge/max_score": max(judge_scores) if judge_scores else 0,
+                "judge/timestamp": datetime.now().timestamp()
+            })
+            
+            # Log individual scores as a histogram
+            if judge_scores:
+                for i, score in enumerate(judge_scores):
+                    self.run.log({f"judge/result_{i+1}_score": score})
+                    
+        except Exception as e:
+            print(f"❌ W&B judge evaluation logging failed: {e}")
+    
     def finish(self):
         """Finish W&B run"""
         if self.is_initialized and self.run:
